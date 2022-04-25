@@ -1,8 +1,8 @@
-from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, status, HTTPException
-from ..hashing import Hash
+from fastapi.security import OAuth2PasswordRequestForm
 from .. import schemas, database, models, token
+from ..hashing import Hash
+from sqlalchemy.orm import Session
 
 router = APIRouter(
     tags=['Authentication']
@@ -10,7 +10,7 @@ router = APIRouter(
 
 
 @router.post('/login')
-def login(req: schemas.Login, db: Session = Depends(database.get_db)):
+def login(req: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
     userauth = db.query(models.User).filter(models.User.email == req.username).first()
     if not userauth:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'data': "You had entered Invalid Authentication "})
@@ -18,7 +18,5 @@ def login(req: schemas.Login, db: Session = Depends(database.get_db)):
     if not Hash.Verify(userauth.password, req.password):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={'data': "You had entered Invalid Password "})
 
-    # access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = token.create_access_token(data={"sub": userauth.email})
     return {"access_token": access_token, "token_type": "bearer"}
-    # return userauth
